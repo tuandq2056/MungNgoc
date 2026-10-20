@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "extract_srt_from_video"
+version = "1.0.0"
+description = "Bóc tách phụ đề tiếng Trung từ video sang file .srt chuẩn xác bằng SenseVoice-Small, Silero-VAD và dịch thuật ngữ nghĩa bằng Qwen."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "tuanlala" }
+]
+dependencies = [
+    "sherpa-onnx>=1.10.0",
+    "numpy>=1.24.0",
+    "requests>=2.28.0",
+    "deep-translator>=1.11.0",
+]
+
+[project.scripts]
+extract-srt = "extract_srt_from_video.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["extract_srt_from_video*"]

@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+.venv/
+env/
+ENV/
+
+# Model checkpoints & cache
+models/
+*.onnx
+*.tar.bz2
+.cache/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# Sample temporary files
+sample_audio.wav
+sample/srt/*.tmp
