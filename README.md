@@ -1,89 +1,105 @@
-# 🎬 Video Subtitle & Voice Dubbing Toolkit
+# 🎬 Hướng Dẫn Chạy Pipeline Lồng Tiếng Video (Auto Dubbing)
 
-> Bộ công cụ bóc tách phụ đề tiếng Trung, dịch thuật ngữ nghĩa bằng **Qwen LLM** và tạo giọng đọc lồng tiếng tiếng Việt đa dạng khớp chuẩn mốc thời gian.
-
----
-
-## 📦 Các Module trong dự án
-
-Dự án gồm 2 module độc lập nhưng phối hợp hoàn hảo với nhau:
-
-1. **`extract_srt_from_video`**:
-   - Trích xuất âm thanh từ video bằng `ffmpeg`.
-   - Phân đoạn giọng nói chuẩn xác bằng **Silero-VAD**.
-   - Nhận diện lời thoại tiếng Trung siêu nhanh bằng **SenseVoice-Small** (ONNX).
-   - Dịch thuật ngữ nghĩa mượt mà, đúng văn phong phim bằng **Qwen 2.5** (Ollama).
-   - Xuất file phụ đề `.srt` (song ngữ, tiếng Trung, tiếng Việt).
-
-2. **`srt_to_voice`**:
-   - Nhận file phụ đề `.srt` tiếng Việt (hoặc file song ngữ).
-   - Tự động sinh giọng đọc tiếng Việt bằng **Edge-TTS Neural Voice**.
-   - Hỗ trợ **nhiều preset giọng đọc phong phú**: Nữ chuẩn, Nữ trẻ, Nữ cổ trang, Nam thuyết minh, Nam kiếm hiệp...
-   - **Tự động co giãn nhịp đọc (Time Alignment)**: Nếu câu đọc dài hơn thời lượng sub, tự động tăng tốc nhẹ (`atempo`) để không đè vào câu tiếp theo.
-   - **Tạo trục âm thanh đồng bộ (Silence Padding)**: Chèn khoảng lặng chuẩn từng mili-giây, tạo ra 1 file âm thanh hoàn chỉnh để kéo thẳng vào Premiere, CapCut hoặc mux vào video.
+> **Quy trình tự động hóa khép kín**: Nạp video tiếng Trung vào thư mục `sample/` $\rightarrow$ Nhận video lồng tiếng tiếng Việt hoàn chỉnh tại `output/`.
 
 ---
 
-## 🎙️ Danh Sách Các Giọng Đọc Có Sẵn (`srt_to_voice`)
+## ⚡ 1. Chuẩn Bị Môi Trường (Chạy 1 lần đầu)
 
-Kiểm tra danh sách giọng bất cứ lúc nào bằng lệnh:
+Mở terminal tại thư mục dự án và kích hoạt môi trường ảo:
+
 ```bash
-python3 -m srt_to_voice --list-voices
+cd /home/tuanlala/.gemini/antigravity/scratch/mungngoc
+source venv/bin/activate
 ```
+
+*(Nếu cài trên máy mới hoàn toàn, chỉ cần chạy: `python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt`)*
+
+> [!NOTE]
+> Để bản dịch đạt chất lượng ngữ nghĩa mượt mà như phim, đảm bảo **Ollama** đang chạy mô hình Qwen (`qwen2.5:3b-instruct` hoặc `qwen2.5:1.5b`). Nếu không có Ollama, hệ thống tự động chuyển sang dịch máy dự phòng.
+
+---
+
+## 🚀 2. Cách Chạy Nhanh Nhất (1-Click Run)
+
+1. Copy file video của bạn (định dạng `.mp4`, `.mkv`, `.mov`...) bỏ vào thư mục `sample/`.
+2. Chạy lệnh:
+   ```bash
+   python3 run.py
+   ```
+3. Lấy video đã được lồng tiếng hoàn chỉnh trong thư mục `output/` (ví dụ: `output/sample_dubbed.mp4`).
+
+---
+
+## 🎛️ 3. Cách Chạy Tùy Biến Nâng Cao (`auto_dub.py`)
+
+Chạy lệnh `auto_dub.py` để tùy chọn giọng đọc, mức âm lượng nền hoặc đường dẫn file:
+
+```bash
+# 1. Chạy tất cả video trong sample/ với giọng Nam thuyết minh:
+python3 auto_dub.py ./sample -v nam_thuyet_minh
+
+# 2. Chạy 1 file video cụ thể với giọng Nữ cổ trang:
+python3 auto_dub.py ./sample/sample.mp4 -v nu_co_trang -o ./output/video_co_trang.mp4
+
+# 3. Điều chỉnh âm lượng nền gốc giảm sâu hơn (ví dụ giảm -6dB thay vì -3dB):
+python3 auto_dub.py ./sample/sample.mp4 --bg-volume -6dB
+
+# 4. Xem danh sách toàn bộ các giọng đọc có sẵn:
+python3 auto_dub.py --list-voices
+```
+
+---
+
+## 🎙️ 4. Bảng Các Giọng Đọc Có Sẵn
+
+Chọn giọng bằng tham số `-v <mã_giọng>`:
 
 | Mã giọng (`-v`) | Giới tính | Phong cách & Mô tả |
 | :--- | :---: | :--- |
-| **`nu_chuan`** | Nữ | Nữ miền Bắc chuẩn, tự nhiên, ấm áp (Mặc định) |
+| **`nu_chuan`** | Nữ | Nữ miền Bắc chuẩn, tự nhiên, ấm áp *(Mặc định)* |
 | **`nu_tre`** | Nữ | Nữ trẻ, trong trẻo, vui tươi |
 | **`nu_tram`** | Nữ | Nữ trầm, chững chạc, giàu cảm xúc |
-| **`nu_co_trang`** | Nữ | Nữ phong cách cổ trang, truyền cảm, nhịp nhẹ nhàng |
-| **`nam_thuyet_minh`**| Nam | Nam thuyết minh phim, trầm ấm, chuẩn phong cách VTV |
+| **`nu_co_trang`** | Nữ | Nữ phong cách cổ trang, nhịp nhẹ nhàng |
+| **`nam_thuyet_minh`**| Nam | Nam thuyết minh phim, trầm ấm, chuẩn giọng VTV |
 | **`nam_chuan`** | Nam | Nam miền Bắc chuẩn, rõ ràng, dứt khoát |
 | **`nam_tre`** | Nam | Nam trẻ, thanh niên, hiện đại |
 | **`nam_co_trang`** | Nam | Nam phong cách kiếm hiệp, kể chuyện, trầm tĩnh |
 
 ---
 
-## 🚀 Cài Đặt & Sử Dụng
+## 🔧 5. Cách Chạy Từng Bước Riêng Lẻ (Nếu cần)
 
-### 1. Kích hoạt Virtual Environment (`venv`):
-```bash
-cd /home/tuanlala/.gemini/antigravity/scratch/mungngoc
-source venv/bin/activate
-```
+Nếu không muốn chạy trọn gói mà chỉ muốn chạy riêng lẻ từng khâu:
 
-### 2. Bóc tách phụ đề từ video:
+### Bước 1: Chỉ bóc tách âm thanh & dịch phụ đề (.srt)
 ```bash
-# Xử lý tất cả video trong thư mục sample/
 python3 -m extract_srt_from_video ./sample -m all
 ```
-Kết quả `.srt` được lưu vào `./sample/srt/`.
+*Kết quả xuất ra tại `sample/srt/`: file `.zh.srt` (tiếng Trung), `.vi.srt` (tiếng Việt), `.srt` (song ngữ).*
 
-### 3. Tạo file âm thanh lồng tiếng từ file `.srt`:
+### Bước 2: Chỉ tạo file âm thanh lồng tiếng từ file .srt
 ```bash
-# Tạo giọng Nữ chuẩn
-python3 -m srt_to_voice ./sample/srt/sample.vi.srt -v nu_chuan
-
-# Tạo giọng Nam thuyết minh phim
-python3 -m srt_to_voice ./sample/srt/sample.vi.srt -v nam_thuyet_minh -o ./sample/srt/voice_nam.mp3
-
-# Tùy chọn lưu cả các file âm thanh lẻ của từng câu:
-python3 -m srt_to_voice ./sample/srt/sample.vi.srt -v nu_tre --save-segments
+python3 -m srt_to_voice ./sample/srt/sample.vi.srt -v nam_thuyet_minh
 ```
+*Kết quả xuất ra tại `sample/srt/sample_voice_nam_thuyet_minh.mp3` (khớp 100% trục thời gian).*
 
-### 4. Chạy nhanh toàn bộ quy trình:
+### Bước 3: Chỉ lồng tiếng file .mp3 vào video gốc
 ```bash
-python3 run.py
+python3 dub_video.py \
+  --video sample/sample.mp4 \
+  --voice sample/srt/sample_voice_nu_chuan.mp3 \
+  -o output/sample_dubbed.mp4 \
+  --bg-volume -3dB
 ```
 
 ---
 
-## 🐳 Chạy bằng Docker
+## 🐳 6. Cách Chạy Bằng Docker
+
+Không cần cài đặt thư viện vào máy, chỉ cần chạy:
+
 ```bash
 docker compose up --build
 ```
-
----
-
-## 📜 Giấy phép
-Mã nguồn phát hành theo giấy phép MIT.
+Video sau khi lồng tiếng sẽ tự động xuất ra thư mục `output/` trên máy của bạn.
