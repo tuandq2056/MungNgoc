@@ -42,3 +42,5 @@ models/
 # Sample temporary files
 sample_audio.wav
 sample/srt/*.tmp
+output/
+
