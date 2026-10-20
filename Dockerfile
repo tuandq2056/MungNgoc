@@ -13,14 +13,12 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy source code
+# Copy source code và cài đặt các module
 COPY . .
-
-# Cài đặt package ở chế độ editable
 RUN pip install --no-cache-dir -e .
 
 ENV PYTHONUNBUFFERED=1
 ENV EXTRACT_SRT_CACHE_DIR=/app/.cache/extract_srt_from_video
 
-ENTRYPOINT ["extract-srt"]
-CMD ["/app/sample", "-m", "all"]
+ENTRYPOINT ["python3", "pipeline.py"]
+CMD ["sample", "-o", "output"]

@@ -33,14 +33,14 @@ models/
 *.tar.bz2
 .cache/
 
+# Audio outputs & artifacts
+*.mp3
+*.wav
+output/
+sample/srt/*.mp3
+
 # IDE & OS
 .vscode/
 .idea/
 .DS_Store
 *.swp
-
-# Sample temporary files
-sample_audio.wav
-sample/srt/*.tmp
-output/
-

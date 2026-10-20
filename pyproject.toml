@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "extract_srt_from_video"
+name = "mungngoc"
 version = "1.0.0"
-description = "Bóc tách phụ đề tiếng Trung sang .srt và tạo lồng tiếng tiếng Việt đa giọng đọc chuẩn mốc thời gian."
+description = "Hệ thống bóc tách, dịch thuật Qwen và lồng tiếng video đa module tự động."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -21,11 +21,11 @@ dependencies = [
 ]
 
 [project.scripts]
-auto-dub = "auto_dub:main"
+auto-dub = "pipeline:main"
 extract-srt = "extract_srt_from_video.cli:main"
 srt-to-voice = "srt_to_voice.cli:main"
-
+video-dubber = "video_dubber.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["extract_srt_from_video*", "srt_to_voice*"]
+include = ["extract_srt_from_video*", "srt_to_voice*", "video_dubber*"]

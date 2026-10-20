@@ -1,13 +1,12 @@
 version: '3.8'
 
 services:
-  extract-srt:
+  pipeline:
     build: .
-    network_mode: "host" # Cho phép container gọi trực tiếp Ollama tại localhost:11434
+    network_mode: "host" # Kết nối với Ollama chạy tại localhost:11434
     volumes:
-      # Mount thư mục sample để đọc video và lưu file srt
       - ./sample:/app/sample
-      # Mount cache model để không phải tải lại mỗi lần chạy
+      - ./output:/app/output
       - model_cache:/app/.cache/extract_srt_from_video
     environment:
       - OLLAMA_HOST=http://localhost:11434

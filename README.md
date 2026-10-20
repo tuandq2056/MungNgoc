@@ -1,59 +1,87 @@
-# 🎬 Hướng Dẫn Chạy Pipeline Lồng Tiếng Video (Auto Dubbing)
+# 🎬 Hệ Thống Bóc Tách, Dịch Thuật & Lồng Tiếng Video (Multi-Module Pipeline)
 
-> **Quy trình tự động hóa khép kín**: Nạp video tiếng Trung vào thư mục `sample/` $\rightarrow$ Nhận video lồng tiếng tiếng Việt hoàn chỉnh tại `output/`.
+> **Kiến trúc đa module độc lập**: Dự án được chia thành 3 module chuyên biệt, mỗi module có thư mục riêng, quản lý độc lập và có thể chạy riêng lẻ hoặc phối hợp nhịp nhàng qua Pipeline điều phối.
 
 ---
 
-## ⚡ 1. Chuẩn Bị Môi Trường (Chạy 1 lần đầu)
+## 🏗️ 1. Cấu Trúc 3 Module Độc Lập
 
-Mở terminal tại thư mục dự án và kích hoạt môi trường ảo:
+```text
+├── extract_srt_from_video/    # MODULE 1: Bóc tách tiếng Trung (SenseVoice) & Dịch ngữ nghĩa (Qwen)
+│   ├── asr.py                 # Nhận diện âm thanh SenseVoice-Small ONNX
+│   ├── vad.py                 # Cắt đoạn giọng nói Silero-VAD
+│   ├── translator.py          # Dịch ngữ cảnh bằng Qwen LLM + Fallback
+│   ├── audio.py               # Trích xuất âm thanh từ video bằng ffmpeg
+│   ├── srt.py                 # Xuất file .srt chuẩn (song ngữ, zh, vi)
+│   └── cli.py                 # CLI độc lập: python3 -m extract_srt_from_video
+│
+├── srt_to_voice/              # MODULE 2: Sinh giọng đọc lồng tiếng từ file .srt tiếng Việt
+│   ├── tts.py                 # Engine Edge-TTS tiếng Việt
+│   ├── voices.py              # Đa dạng giọng đọc (Nữ chuẩn, Nam thuyết minh, Cổ trang...)
+│   ├── aligner.py             # Tự động co giãn thời gian (Time Alignment)
+│   ├── builder.py             # Ghép trục thời gian chèn silence chuẩn từng mili-giây
+│   └── cli.py                 # CLI độc lập: python3 -m srt_to_voice
+│
+├── video_dubber/              # MODULE 3: Hòa âm giọng đọc vào video gốc (-3dB nền)
+│   ├── mixer.py               # FFmpeg audio mixing (-3dB âm thanh nền, giữ nguyên 100% video)
+│   └── cli.py                 # CLI độc lập: python3 -m video_dubber
+│
+├── pipeline.py                # BỘ ĐIỀU PHỐI (Orchestrator kết nối tuần tự 3 module trên)
+├── run.py                     # Script 1-Click tiện lợi: python3 run.py
+├── sample/                    # Thư mục nạp video mẫu
+├── output/                    # Thư mục xuất video hoàn chỉnh sau khi lồng tiếng
+├── pyproject.toml             # Cấu hình gói Python cho cả 3 module
+├── requirements.txt           # Danh sách thư viện cần thiết
+├── Dockerfile & compose       # Đóng gói container Docker
+└── README.md
+```
+
+---
+
+## ⚡ 2. Chuẩn Bị Môi Trường (Chạy 1 lần đầu)
+
+Kích hoạt môi trường ảo `venv`:
 
 ```bash
 cd /home/tuanlala/.gemini/antigravity/scratch/mungngoc
 source venv/bin/activate
 ```
 
-*(Nếu cài trên máy mới hoàn toàn, chỉ cần chạy: `python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt`)*
+*(Nếu cài trên máy mới: `python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt`)*
 
 > [!NOTE]
-> Để bản dịch đạt chất lượng ngữ nghĩa mượt mà như phim, đảm bảo **Ollama** đang chạy mô hình Qwen (`qwen2.5:3b-instruct` hoặc `qwen2.5:1.5b`). Nếu không có Ollama, hệ thống tự động chuyển sang dịch máy dự phòng.
+> Đảm bảo **Ollama** đang chạy mô hình Qwen (`qwen2.5:3b-instruct` hoặc `qwen2.5:1.5b`) để bản dịch đạt chất lượng ngữ nghĩa mượt mà nhất. Nếu không có Ollama, hệ thống tự động fallback sang dịch máy.
 
 ---
 
-## 🚀 2. Cách Chạy Nhanh Nhất (1-Click Run)
+## 🚀 3. Cách Chạy Trọn Gói Pipeline (End-to-End)
 
-1. Copy file video của bạn (định dạng `.mp4`, `.mkv`, `.mov`...) bỏ vào thư mục `sample/`.
-2. Chạy lệnh:
+### Cách nhanh nhất (1-Click Run):
+1. Ném file video cần xử lý vào thư mục `sample/`.
+2. Chạy:
    ```bash
    python3 run.py
    ```
-3. Lấy video đã được lồng tiếng hoàn chỉnh trong thư mục `output/` (ví dụ: `output/sample_dubbed.mp4`).
+3. Lấy video lồng tiếng hoàn chỉnh trong thư mục `output/`.
 
----
-
-## 🎛️ 3. Cách Chạy Tùy Biến Nâng Cao (`auto_dub.py`)
-
-Chạy lệnh `auto_dub.py` để tùy chọn giọng đọc, mức âm lượng nền hoặc đường dẫn file:
-
+### Chạy tùy biến qua `pipeline.py`:
 ```bash
-# 1. Chạy tất cả video trong sample/ với giọng Nam thuyết minh:
-python3 auto_dub.py ./sample -v nam_thuyet_minh
+# Đổi giọng Nam thuyết minh:
+python3 pipeline.py ./sample -v nam_thuyet_minh
 
-# 2. Chạy 1 file video cụ thể với giọng Nữ cổ trang:
-python3 auto_dub.py ./sample/sample.mp4 -v nu_co_trang -o ./output/video_co_trang.mp4
+# Đổi giọng Nữ cổ trang cho 1 video cụ thể:
+python3 pipeline.py ./sample/sample.mp4 -v nu_co_trang -o ./output/video_dubbed.mp4
 
-# 3. Điều chỉnh âm lượng nền gốc giảm sâu hơn (ví dụ giảm -6dB thay vì -3dB):
-python3 auto_dub.py ./sample/sample.mp4 --bg-volume -6dB
+# Điều chỉnh mức âm lượng nền (ví dụ giảm -6dB):
+python3 pipeline.py ./sample --bg-volume -6dB
 
-# 4. Xem danh sách toàn bộ các giọng đọc có sẵn:
-python3 auto_dub.py --list-voices
+# Xem danh sách các giọng đọc có sẵn:
+python3 pipeline.py --list-voices
 ```
 
 ---
 
-## 🎙️ 4. Bảng Các Giọng Đọc Có Sẵn
-
-Chọn giọng bằng tham số `-v <mã_giọng>`:
+## 🎙️ 4. Danh Sách Các Giọng Đọc Có Sẵn
 
 | Mã giọng (`-v`) | Giới tính | Phong cách & Mô tả |
 | :--- | :---: | :--- |
@@ -68,25 +96,25 @@ Chọn giọng bằng tham số `-v <mã_giọng>`:
 
 ---
 
-## 🔧 5. Cách Chạy Từng Bước Riêng Lẻ (Nếu cần)
+## 🔧 5. Cách Sử Dụng Độc Lập Từng Module
 
-Nếu không muốn chạy trọn gói mà chỉ muốn chạy riêng lẻ từng khâu:
+Mỗi module được thiết kế hoàn toàn độc lập, có thể gọi riêng lẻ:
 
-### Bước 1: Chỉ bóc tách âm thanh & dịch phụ đề (.srt)
+### 🔹 Module 1: Chỉ bóc tách tiếng Trung & dịch ra `.srt`
 ```bash
 python3 -m extract_srt_from_video ./sample -m all
 ```
-*Kết quả xuất ra tại `sample/srt/`: file `.zh.srt` (tiếng Trung), `.vi.srt` (tiếng Việt), `.srt` (song ngữ).*
+*Kết quả xuất ra tại `sample/srt/`: `sample.zh.srt` (tiếng Trung), `sample.vi.srt` (tiếng Việt dịch bằng Qwen), `sample.srt` (song ngữ).*
 
-### Bước 2: Chỉ tạo file âm thanh lồng tiếng từ file .srt
+### 🔹 Module 2: Chỉ tạo file audio lồng tiếng từ file `.srt`
 ```bash
 python3 -m srt_to_voice ./sample/srt/sample.vi.srt -v nam_thuyet_minh
 ```
-*Kết quả xuất ra tại `sample/srt/sample_voice_nam_thuyet_minh.mp3` (khớp 100% trục thời gian).*
+*Kết quả xuất ra file `.mp3` khớp 100% trục thời gian của phụ đề (có silence padding).*
 
-### Bước 3: Chỉ lồng tiếng file .mp3 vào video gốc
+### 🔹 Module 3: Chỉ hòa âm file voice vào video gốc
 ```bash
-python3 dub_video.py \
+python3 -m video_dubber \
   --video sample/sample.mp4 \
   --voice sample/srt/sample_voice_nu_chuan.mp3 \
   -o output/sample_dubbed.mp4 \
@@ -95,11 +123,8 @@ python3 dub_video.py \
 
 ---
 
-## 🐳 6. Cách Chạy Bằng Docker
-
-Không cần cài đặt thư viện vào máy, chỉ cần chạy:
-
+## 🐳 6. Chạy Bằng Docker
 ```bash
 docker compose up --build
 ```
-Video sau khi lồng tiếng sẽ tự động xuất ra thư mục `output/` trên máy của bạn.
+Video sau khi lồng tiếng sẽ tự động xuất ra thư mục `output/`.
