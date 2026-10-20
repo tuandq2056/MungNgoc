@@ -1,107 +1,86 @@
-# 🎬 Extract SRT from Video (extract_srt_from_video)
+# 🎬 Video Subtitle & Voice Dubbing Toolkit
 
-> **Module bóc tách và dịch phụ đề video tiếng Trung sang file `.srt` chuẩn ngữ nghĩa.**  
-> Kết hợp công nghệ nhận diện giọng nói **SenseVoice-Small** (Alibaba), phân đoạn câu **Silero-VAD** và dịch thuật ngữ nghĩa mượt mà bằng **Qwen LLM**.
-
----
-
-## ✨ Điểm nổi bật
-
-1. **Nhận diện tiếng Trung cực chuẩn**: Sử dụng **SenseVoice-Small** qua runtime ONNX tối ưu, tốc độ giải mã siêu thanh (~70ms cho 10s audio) mà không cần cài đặt PyTorch/CUDA cồng kềnh.
-2. **Mốc thời gian (Timestamps) khớp từng mili-giây**: Sử dụng **Silero-VAD** để loại bỏ hoàn toàn các đoạn im lặng/nhạc nền, chỉ bắt đúng đoạn có lời thoại.
-3. **Dịch chuẩn ngữ nghĩa bằng Qwen**: Tự động kết nối với mô hình **Qwen** (qua Ollama) với System Prompt chuyên sâu về phụ đề phim ảnh, giải quyết triệt để lỗi dịch máy thô cứng.
-4. **Hỗ trợ 4 chế độ phụ đề**:
-   - `bilingual`: Phụ đề song ngữ (Dòng 1: Tiếng Trung, Dòng 2: Tiếng Việt).
-   - `zh`: Chỉ xuất phụ đề tiếng Trung gốc.
-   - `vi`: Chỉ xuất phụ đề tiếng Việt.
-   - `all`: Xuất cùng lúc cả 3 file phụ đề (`.srt`, `.zh.srt`, `.vi.srt`).
-5. **Đóng gói chuẩn chỉnh**: Sẵn sàng chạy bằng virtual environment (`venv`), cài đặt thư viện (`pip`), hoặc đóng gói bằng **Docker / Docker Compose** để đẩy lên GitHub.
+> Bộ công cụ bóc tách phụ đề tiếng Trung, dịch thuật ngữ nghĩa bằng **Qwen LLM** và tạo giọng đọc lồng tiếng tiếng Việt đa dạng khớp chuẩn mốc thời gian.
 
 ---
 
-## 🚀 Cài đặt & Sử dụng
+## 📦 Các Module trong dự án
 
-### Cách 1: Sử dụng Virtual Environment (Khuyên dùng)
+Dự án gồm 2 module độc lập nhưng phối hợp hoàn hảo với nhau:
 
-1. **Khởi tạo và kích hoạt môi trường ảo:**
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
+1. **`extract_srt_from_video`**:
+   - Trích xuất âm thanh từ video bằng `ffmpeg`.
+   - Phân đoạn giọng nói chuẩn xác bằng **Silero-VAD**.
+   - Nhận diện lời thoại tiếng Trung siêu nhanh bằng **SenseVoice-Small** (ONNX).
+   - Dịch thuật ngữ nghĩa mượt mà, đúng văn phong phim bằng **Qwen 2.5** (Ollama).
+   - Xuất file phụ đề `.srt` (song ngữ, tiếng Trung, tiếng Việt).
 
-2. **Cài đặt các gói phụ thuộc:**
-   ```bash
-   pip install -r requirements.txt
-   # Hoặc cài đặt module ở chế độ editable:
-   pip install -e .
-   ```
-
-3. **Chạy xử lý video:**
-   ```bash
-   # Xử lý tất cả video trong thư mục sample/
-   python3 -m extract_srt_from_video ./sample -m all
-
-   # Hoặc sử dụng lệnh CLI sau khi install -e .:
-   extract-srt ./sample/sample.mp4 -m bilingual
-   ```
+2. **`srt_to_voice`**:
+   - Nhận file phụ đề `.srt` tiếng Việt (hoặc file song ngữ).
+   - Tự động sinh giọng đọc tiếng Việt bằng **Edge-TTS Neural Voice**.
+   - Hỗ trợ **nhiều preset giọng đọc phong phú**: Nữ chuẩn, Nữ trẻ, Nữ cổ trang, Nam thuyết minh, Nam kiếm hiệp...
+   - **Tự động co giãn nhịp đọc (Time Alignment)**: Nếu câu đọc dài hơn thời lượng sub, tự động tăng tốc nhẹ (`atempo`) để không đè vào câu tiếp theo.
+   - **Tạo trục âm thanh đồng bộ (Silence Padding)**: Chèn khoảng lặng chuẩn từng mili-giây, tạo ra 1 file âm thanh hoàn chỉnh để kéo thẳng vào Premiere, CapCut hoặc mux vào video.
 
 ---
 
-### Cách 2: Chạy nhanh qua script `run.py`
+## 🎙️ Danh Sách Các Giọng Đọc Có Sẵn (`srt_to_voice`)
 
+Kiểm tra danh sách giọng bất cứ lúc nào bằng lệnh:
 ```bash
+python3 -m srt_to_voice --list-voices
+```
+
+| Mã giọng (`-v`) | Giới tính | Phong cách & Mô tả |
+| :--- | :---: | :--- |
+| **`nu_chuan`** | Nữ | Nữ miền Bắc chuẩn, tự nhiên, ấm áp (Mặc định) |
+| **`nu_tre`** | Nữ | Nữ trẻ, trong trẻo, vui tươi |
+| **`nu_tram`** | Nữ | Nữ trầm, chững chạc, giàu cảm xúc |
+| **`nu_co_trang`** | Nữ | Nữ phong cách cổ trang, truyền cảm, nhịp nhẹ nhàng |
+| **`nam_thuyet_minh`**| Nam | Nam thuyết minh phim, trầm ấm, chuẩn phong cách VTV |
+| **`nam_chuan`** | Nam | Nam miền Bắc chuẩn, rõ ràng, dứt khoát |
+| **`nam_tre`** | Nam | Nam trẻ, thanh niên, hiện đại |
+| **`nam_co_trang`** | Nam | Nam phong cách kiếm hiệp, kể chuyện, trầm tĩnh |
+
+---
+
+## 🚀 Cài Đặt & Sử Dụng
+
+### 1. Kích hoạt Virtual Environment (`venv`):
+```bash
+cd /home/tuanlala/.gemini/antigravity/scratch/mungngoc
 source venv/bin/activate
+```
+
+### 2. Bóc tách phụ đề từ video:
+```bash
+# Xử lý tất cả video trong thư mục sample/
+python3 -m extract_srt_from_video ./sample -m all
+```
+Kết quả `.srt` được lưu vào `./sample/srt/`.
+
+### 3. Tạo file âm thanh lồng tiếng từ file `.srt`:
+```bash
+# Tạo giọng Nữ chuẩn
+python3 -m srt_to_voice ./sample/srt/sample.vi.srt -v nu_chuan
+
+# Tạo giọng Nam thuyết minh phim
+python3 -m srt_to_voice ./sample/srt/sample.vi.srt -v nam_thuyet_minh -o ./sample/srt/voice_nam.mp3
+
+# Tùy chọn lưu cả các file âm thanh lẻ của từng câu:
+python3 -m srt_to_voice ./sample/srt/sample.vi.srt -v nu_tre --save-segments
+```
+
+### 4. Chạy nhanh toàn bộ quy trình:
+```bash
 python3 run.py
 ```
-File phụ đề sẽ được tự động lưu vào thư mục `sample/srt/`.
 
 ---
 
-### Cách 3: Chạy bằng Docker & Docker Compose
-
-Nếu không muốn cài đặt bất kỳ thư viện Python nào lên máy chủ/máy cá nhân:
-
+## 🐳 Chạy bằng Docker
 ```bash
-# Build và chạy với Docker Compose
 docker compose up --build
-```
-Container sẽ tự động kết nối với Ollama chạy trên máy host để dịch phụ đề.
-
----
-
-## 🛠️ Cấu hình mô hình dịch (Qwen / Fallback)
-
-Module tự động kiểm tra xem máy có đang chạy **Ollama** với mô hình Qwen hay không (mặc định tại `http://localhost:11434` với model `qwen2.5:3b-instruct` hoặc `qwen2.5:1.5b`).
-
-- **Nếu có Ollama & Qwen**: Tự động dùng Qwen để dịch nghĩa mượt mà, đúng văn phong phim cổ trang / hiện đại.
-- **Nếu không có Ollama**: Tự động fallback sang Google / MyMemory Translate hoặc xuất phụ đề tiếng Trung gốc mà không làm crash chương trình.
-
----
-
-## 📂 Cấu trúc Repository
-
-```text
-├── extract_srt_from_video/    # Mã nguồn chính của module
-│   ├── __init__.py            # Export các hàm: extract_srt, process_video, process_folder
-│   ├── config.py              # Cấu hình đường dẫn, URL mô hình
-│   ├── models.py              # Tự động tải SenseVoice & Silero-VAD ONNX
-│   ├── audio.py               # Trích xuất âm thanh qua ffmpeg stream
-│   ├── vad.py                 # Silero-VAD cắt đoạn thoại
-│   ├── asr.py                 # SenseVoice nhận diện tiếng Trung
-│   ├── translator.py          # Qwen LLM translator + Fallback
-│   ├── srt.py                 # Xuất file .srt chuẩn
-│   ├── pipeline.py            # Quy trình xử lý tự động
-│   └── cli.py                 # Giao diện dòng lệnh
-├── sample/                    # Thư mục chứa video mẫu
-│   ├── sample.mp4
-│   └── srt/                   # Kết quả phụ đề xuất ra
-├── Dockerfile                 # Đóng gói Docker
-├── docker-compose.yml         # Chạy container nhanh
-├── pyproject.toml             # Chuẩn cấu hình build package Python
-├── requirements.txt           # Danh sách thư viện cần thiết
-├── .gitignore                 # Loại trừ file rác, cache, venv
-├── run.py                     # Script chạy test nhanh
-└── README.md                  # Hướng dẫn sử dụng
 ```
 
 ---
