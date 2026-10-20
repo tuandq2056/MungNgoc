@@ -21,8 +21,10 @@ dependencies = [
 ]
 
 [project.scripts]
+auto-dub = "auto_dub:main"
 extract-srt = "extract_srt_from_video.cli:main"
 srt-to-voice = "srt_to_voice.cli:main"
+
 
 [tool.setuptools.packages.find]
 where = ["."]
