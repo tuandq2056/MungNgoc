@@ -51,7 +51,7 @@ def process_video_pipeline(
 
     # BƯỚC 2: Module srt_to_voice
     print(f"\n👉 [BƯỚC 2/3] Gọi module [srt_to_voice] ({voice} - Edge-TTS)...")
-    voice_audio_path = srt_dir / f"{video_path.stem}_voice_{voice}.mp3"
+    voice_audio_path = srt_dir / f"{video_path.stem}.mp3"
     generate_voice_from_srt(
         srt_path=vi_srt,
         output_audio=voice_audio_path,
@@ -62,7 +62,7 @@ def process_video_pipeline(
     # BƯỚC 3: Module video_dubber
     print(f"\n👉 [BƯỚC 3/3] Gọi module [video_dubber] (FFmpeg amix {bg_volume})...")
     output_dir.mkdir(parents=True, exist_ok=True)
-    dubbed_video_path = output_dir / f"{video_path.stem}_dubbed.mp4"
+    dubbed_video_path = output_dir / f"{video_path.stem}.mp4"
     final_video = dub_video(
         video_path=video_path,
         voice_audio_path=voice_audio_path,
@@ -92,20 +92,22 @@ def run_pipeline(
         out_dir = Path(output_dir).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    results = []
     if target.is_file():
-        res = process_video_pipeline(target, out_dir, voice, bg_volume, max_speedup)
-        results.append(res)
-    elif target.is_dir():
-        videos = [
+        videos = [target]
+    else:
+        videos = sorted(
             f for f in target.iterdir()
             if f.is_file() and f.suffix.lower() in SUPPORTED_VIDEO_EXTENSIONS
-        ]
-        videos.sort()
-        print(f"[pipeline] Tìm thấy {len(videos)} video cần lồng tiếng trong: {target}")
-        for v in videos:
-            res = process_video_pipeline(v, out_dir, voice, bg_volume, max_speedup)
-            results.append(res)
+        )
+        print(f"[pipeline] Tìm thấy {len(videos)} video trong: {target}")
+
+    results = []
+    for v in videos:
+        done = out_dir / f"{v.stem}.mp4"
+        if done.exists():
+            print(f"[pipeline] Bỏ qua {v.name}: đã có {done.name} trong {out_dir.name}/")
+            continue
+        results.append(process_video_pipeline(v, out_dir, voice, bg_volume, max_speedup))
 
     return results
 
