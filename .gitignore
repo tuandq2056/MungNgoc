@@ -21,6 +21,9 @@ share/python-wheels/
 .installed.cfg
 *.egg
 
+# Secrets
+.env
+
 # Virtual Environment
 venv/
 .venv/
@@ -37,7 +40,9 @@ models/
 *.mp3
 *.wav
 output/
-sample/srt/*.mp3
+sample/srt/
+# Video mẫu mới thêm vào sample/ (sample.mp4 đã được theo dõi nên không bị ảnh hưởng)
+sample/*.mp4
 
 # IDE & OS
 .vscode/

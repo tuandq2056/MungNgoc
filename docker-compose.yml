@@ -11,6 +11,10 @@ services:
     environment:
       - OLLAMA_HOST=http://localhost:11434
       - QWEN_MODEL=qwen2.5:3b-instruct
+      # Truyền key từ .env cạnh docker-compose.yml (compose tự đọc) hoặc từ biến môi trường của shell; không đóng gói vào image
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - AZURE_SPEECH_KEY=${AZURE_SPEECH_KEY:-}
+      - AZURE_SPEECH_REGION=${AZURE_SPEECH_REGION:-}
 
 volumes:
   model_cache:

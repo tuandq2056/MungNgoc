@@ -1,0 +1,8 @@
+# Không đưa bí mật và dữ liệu cục bộ vào image
+.env
+.git
+venv/
+output/
+__pycache__/
+*.pyc
+sample/srt/

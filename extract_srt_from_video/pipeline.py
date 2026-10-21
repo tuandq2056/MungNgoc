@@ -7,8 +7,10 @@ from .config import SUPPORTED_VIDEO_EXTENSIONS
 from .models import ensure_models
 from .vad import VoiceActivitySegmenter, SpeechSegment
 from .asr import SenseVoiceASR
-from .translator import SubtitleTranslator
+from .translator import SubtitleTranslator, TranslationError, is_speakable
 from .srt import SrtEntry, write_srt_file
+
+MAX_UNTRANSLATED_RATIO = 0.2
 
 
 def process_video(
@@ -87,18 +89,37 @@ def process_video(
     entries_zh: list[SrtEntry] = []
     entries_vi: list[SrtEntry] = []
 
-    valid_idx = 1
-    for i, seg in enumerate(segments, 1):
+    recognized: list[tuple] = []
+    for seg in segments:
         zh_text = asr.transcribe_segment(seg.samples)
         if not zh_text:
             continue
-
         print(f"  [{seg.start_sec:.2f}s -> {seg.end_sec:.2f}s] ZH: {zh_text}")
+        recognized.append((seg, zh_text))
 
-        vi_text = ""
+    # Dịch cả lô để model có ngữ cảnh các câu xung quanh
+    vi_texts = [""] * len(recognized)
+    if translator and mode in ("bilingual", "vi", "all"):
+        print(f"[pipeline]    Đang dịch {len(recognized)} câu...")
+        vi_texts = translator.translate_many([zh for _, zh in recognized])
+
+        # Câu có nội dung mà không dịch được sẽ thành khoảng lặng trong video lồng tiếng: quá nhiều thì dừng
+        speakable = [(seg, zh) for (seg, zh), vi in zip(recognized, vi_texts) if is_speakable(zh)]
+        failed = [(seg, zh) for (seg, zh), vi in zip(recognized, vi_texts) if is_speakable(zh) and not vi]
+        if failed:
+            detail = "\n".join(f"  - [{seg.start_sec:.2f}s] {zh}" for seg, zh in failed)
+            print(f"[pipeline] Cảnh báo: {len(failed)}/{len(speakable)} câu không dịch được:\n{detail}")
+            if len(failed) / len(speakable) > MAX_UNTRANSLATED_RATIO:
+                raise TranslationError(
+                    f"{len(failed)}/{len(speakable)} câu không dịch được (quá ngưỡng {MAX_UNTRANSLATED_RATIO:.0%}), "
+                    "dừng để tránh video lồng tiếng thiếu tiếng. Kiểm tra GEMINI_API_KEY / Ollama / kết nối mạng."
+                )
+
+    valid_idx = 1
+    for (seg, zh_text), vi_text in zip(recognized, vi_texts):
+        stamp = f"[{seg.start_sec:.2f}s -> {seg.end_sec:.2f}s]"
         if translator and mode in ("bilingual", "vi", "all"):
-            vi_text = translator.translate(zh_text)
-            print(f"  {' ' * len(f'[{seg.start_sec:.2f}s -> {seg.end_sec:.2f}s]')} VI: {vi_text}")
+            print(f"  {stamp} VI: {vi_text or '(KHÔNG DỊCH ĐƯỢC - bỏ qua câu này ở bản tiếng Việt)'}")
 
         # Chuẩn bị nội dung theo mode
         if mode in ("bilingual", "all"):
@@ -108,8 +129,9 @@ def process_video(
         if mode in ("zh", "all"):
             entries_zh.append(SrtEntry(index=valid_idx, start_sec=seg.start_sec, end_sec=seg.end_sec, text=zh_text))
 
-        if mode in ("vi", "all"):
-            entries_vi.append(SrtEntry(index=valid_idx, start_sec=seg.start_sec, end_sec=seg.end_sec, text=vi_text or zh_text))
+        # Bản tiếng Việt chỉ chứa tiếng Việt: câu không dịch được thì bỏ, không chèn tiếng Trung
+        if mode in ("vi", "all") and vi_text:
+            entries_vi.append(SrtEntry(index=len(entries_vi) + 1, start_sec=seg.start_sec, end_sec=seg.end_sec, text=vi_text))
 
         valid_idx += 1
 

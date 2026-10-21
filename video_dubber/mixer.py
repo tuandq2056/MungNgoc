@@ -1,3 +1,4 @@
+import os
 import subprocess
 from pathlib import Path
 from typing import Optional
@@ -45,6 +46,8 @@ def dub_video(
         out_file = Path(output_path).resolve()
         out_file.parent.mkdir(parents=True, exist_ok=True)
 
+    tmp_file = out_file.with_name(f"{out_file.stem}.part{out_file.suffix}")
+
     print(f"\n[video_dubber] === Lồng tiếng video: {video_path.name} ===")
     print(f"[video_dubber] File voice: {voice_audio_path.name}")
     print(f"[video_dubber] Âm lượng nền gốc: {bg_volume_db} | Âm lượng voice: {voice_volume_db}")
@@ -69,12 +72,17 @@ def dub_video(
         "-c:v", "copy",
         "-c:a", "aac",
         "-b:a", "192k",
-        str(out_file),
+        str(tmp_file),
     ]
 
-    res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    if res.returncode != 0:
-        raise RuntimeError(f"Lỗi FFmpeg khi lồng tiếng: {res.stderr}")
+    # Ghi ra file tạm rồi mới đổi tên: nếu ffmpeg chết giữa chừng thì không để lại file dở dang mang tên thật
+    try:
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if res.returncode != 0:
+            raise RuntimeError(f"Lỗi FFmpeg khi lồng tiếng: {res.stderr}")
+        os.replace(tmp_file, out_file)
+    finally:
+        tmp_file.unlink(missing_ok=True)
 
     print(f"[video_dubber] [V] Đã hoàn thành lồng tiếng video: {out_file}")
     return out_file

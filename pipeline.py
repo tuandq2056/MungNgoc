@@ -13,6 +13,8 @@ import argparse
 from pathlib import Path
 from typing import Optional
 
+import requests
+
 current_dir = Path(__file__).resolve().parent
 if str(current_dir) not in sys.path:
     sys.path.insert(0, str(current_dir))
@@ -21,7 +23,22 @@ if str(current_dir) not in sys.path:
 from extract_srt_from_video import process_video
 from extract_srt_from_video.config import SUPPORTED_VIDEO_EXTENSIONS
 from srt_to_voice import generate_voice_from_srt, list_available_voices
+from srt_to_voice.tts import TTSError
 from video_dubber import dub_video
+
+MAX_VIDEO_ATTEMPTS = 3
+# Chỉ lỗi tạm thời (TTS/mạng) mới đáng làm lại từ đầu; lỗi cố định (srt rỗng, thiếu ffmpeg, dịch hỏng nhiều...) thì dừng ngay
+RETRYABLE_ERRORS = (TTSError, requests.RequestException, ConnectionError, TimeoutError)
+
+
+class PipelineFailures(RuntimeError):
+    """Có video thất bại; `results` là các video đã xử lý xong, `failures` là (video, lỗi)."""
+
+    def __init__(self, results: list[Path], failures: list[tuple[Path, Exception]]):
+        names = ", ".join(v.name for v, _ in failures)
+        super().__init__(f"{len(failures)} video thất bại ({names}). Chạy lại để làm lại các video này.")
+        self.results = results
+        self.failures = failures
 
 
 def process_video_pipeline(
@@ -102,12 +119,27 @@ def run_pipeline(
         print(f"[pipeline] Tìm thấy {len(videos)} video trong: {target}")
 
     results = []
+    failures: list[tuple[Path, Exception]] = []
     for v in videos:
         done = out_dir / f"{v.stem}.mp4"
         if done.exists():
             print(f"[pipeline] Bỏ qua {v.name}: đã có {done.name} trong {out_dir.name}/")
             continue
-        results.append(process_video_pipeline(v, out_dir, voice, bg_volume, max_speedup))
+        for attempt in range(1, MAX_VIDEO_ATTEMPTS + 1):
+            try:
+                results.append(process_video_pipeline(v, out_dir, voice, bg_volume, max_speedup))
+                break
+            except Exception as e:
+                print(f"\n[pipeline] [X] {v.name} lỗi (lần {attempt}/{MAX_VIDEO_ATTEMPTS}): {e}", file=sys.stderr)
+                if attempt < MAX_VIDEO_ATTEMPTS and isinstance(e, RETRYABLE_ERRORS):
+                    print("[pipeline] Lỗi tạm thời, làm lại video này từ đầu...", file=sys.stderr)
+                    continue
+                # Không chặn các video còn lại; video lỗi chưa có output nên lần chạy sau sẽ làm lại
+                failures.append((v, e))
+                break
+
+    if failures:
+        raise PipelineFailures(results, failures)
 
     return results
 
@@ -141,6 +173,14 @@ def main():
             max_speedup=args.max_speedup,
         )
         print(f"\n[Hoàn tất] Đã xử lý xong {len(results)} video.")
+    except PipelineFailures as e:
+        print(f"\n[Hoàn tất một phần] Xong {len(e.results)} video:", file=sys.stderr)
+        for r in e.results:
+            print(f"  ✔ {r}", file=sys.stderr)
+        print(f"Thất bại {len(e.failures)} video:", file=sys.stderr)
+        for v, err in e.failures:
+            print(f"  ✘ {v.name}: {err}", file=sys.stderr)
+        sys.exit(1)
     except Exception as e:
         print(f"\nLỗi: {e}", file=sys.stderr)
         sys.exit(1)

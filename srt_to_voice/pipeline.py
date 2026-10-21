@@ -3,10 +3,10 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
-from .voices import get_voice_profile, list_available_voices
 from .srt_parser import parse_srt_file, SubtitleItem
-from .tts import EdgeTTSGenerator
-from .aligner import adjust_audio_speed, get_audio_duration
+from .voices import get_voice_profile
+from .tts import make_tts
+from .aligner import adjust_audio_speed
 from .builder import build_timeline_audio
 
 
@@ -54,7 +54,7 @@ def generate_voice_from_srt(
     print(f"[srt_to_voice] Giọng đọc: {profile.name} ({profile.description})")
     print(f"[srt_to_voice] Tìm thấy {len(items)} câu thoại cần sinh giọng.")
 
-    tts_gen = EdgeTTSGenerator(profile)
+    tts_gen = make_tts(profile)
 
     # Tạo thư mục tạm để lưu các câu thoại đơn lẻ
     temp_dir = Path(tempfile.mkdtemp(prefix="srt_voice_"))
@@ -75,10 +75,15 @@ def generate_voice_from_srt(
             raw_clip_path = temp_dir / f"raw_{item.index:04d}.mp3"
             aligned_clip_path = temp_dir / f"aligned_{item.index:04d}.mp3"
 
+            # Câu chỉ có dấu câu/ký hiệu thì không có gì để đọc
+            if not any(c.isalnum() for c in item.text):
+                print(f"  [{item.start_sec:.2f}s -> {item.end_sec:.2f}s] Bỏ qua (không có chữ để đọc): {item.text}")
+                continue
+
             print(f"  [{item.start_sec:.2f}s -> {item.end_sec:.2f}s] Đang đọc: {item.text}")
 
-            # Sinh âm thanh từ Edge-TTS
-            tts_gen.generate_speech(item.text, raw_clip_path)
+            # Sinh âm thanh (Azure nếu có key, không thì Edge-TTS); hết số lần thử thì ném TTSError, không xuất video thiếu tiếng
+            tts_gen.generate_speech_with_retry(item.text, raw_clip_path)
 
             # Căn chỉnh tốc độ cho vừa khung thời gian nếu bị dài hơn
             final_clip_path, final_dur = adjust_audio_speed(
@@ -94,6 +99,9 @@ def generate_voice_from_srt(
             if seg_out_dir:
                 dest_seg = seg_out_dir / f"seg_{item.index:04d}.mp3"
                 shutil.copy2(final_clip_path, dest_seg)
+
+        if not clips:
+            raise ValueError(f"Không có câu thoại nào đọc được trong {srt_path.name}; không xuất file voice rỗng.")
 
         # 3. Ghép toàn bộ vào trục thời gian (chèn silence chuẩn từng mili-giây)
         print(f"[srt_to_voice] Đang tổng hợp và khớp trục thời gian vào: {out_file.name}...")
