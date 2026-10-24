@@ -1,0 +1,30 @@
+# Bảng thuật ngữ cho module qwen_translate: giữ tên nhân vật và xưng hô nhất quán giữa mọi tập.
+# Dòng thuật ngữ:  chữ Hán chuẩn [| cách ASR hay nghe sai ...] = bản dịch tiếng Việt
+# Dòng bắt đầu bằng @ là quy ước viết thẳng vào prompt. Dòng bắt đầu bằng # là chú thích.
+# Nội dung dưới đây dành cho series "Thanh Âm Các"; đổi file này khi xử lý series khác.
+
+林毅 | 林业 | 林依 | 林叶 | 林一 | 林飞 | 林噎 | 灵异 | 灵毅 | 临异 = Lâm Nghị (nam chính, đệ tử út)
+冷月 | 冷约 | 冷冷月 = Lãnh Nguyệt (sư tỷ, nhị giai)
+苏暖暖 | 暖暖 = Tô Noãn Noãn / Noãn Noãn (sư tỷ, nhất giai)
+青音阁 = Thanh Âm Các
+师傅 | 师父 = sư phụ (nữ, tam giai)
+师姐 = sư tỷ
+双修 | 双休 = song tu
+一阶 | 一街 = nhất giai
+二阶 = nhị giai
+三阶 = tam giai
+妖兽 = yêu thú
+妖狼 | 妖郎 = yêu lang
+青狼谷 | 青郎谷 = Thanh Lang Cốc
+蓝瘦香菇 | 蓝瘦西菇 = Lam Sấu Hương Cô (tên dược liệu)
+史莱姆 = Slime
+天机仪 = Thiên Cơ Nghi
+快乐马 = Khoái Lạc Mã
+生仙令 = Sinh Tiên Lệnh
+拘灵术 | 居灵树 = Câu Linh Thuật
+藏经阁 = Tàng Kinh Các
+徒儿 | 图尔 = đồ nhi
+
+@Văn phong cổ trang tiên hiệp. Sư phụ xưng "ta", gọi các đệ tử là "con". Đệ tử gọi sư phụ là "sư phụ", gọi nhau là "sư tỷ"/"đệ"/"muội".
+@Lâm Nghị là nam, gọi hai người kia là "sư tỷ" và tự xưng "đệ". Lãnh Nguyệt nói với Lâm Nghị bằng "ta"/"ngươi".
+@Văn bản do nhận diện giọng nói nên có thể sai đồng âm: nếu một từ vô nghĩa nghe giống tên trong bảng trên thì dùng tên chuẩn.
